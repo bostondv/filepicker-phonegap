@@ -1,4 +1,6 @@
 var filepicker = (function(){
+    'use strict';
+    
     /*
      * @String: The API key for this site
      */
@@ -219,17 +221,11 @@ var filepicker = (function(){
     };
 
     var createPhoneGapPane = function(url, callback) {
-        if (window.plugins === undefined || window.plugins.childBrowser === undefined) {
-            throw FilepickerException("Could not find ChildBrowser plugin. Be sure you have it installed. See https://github.com/purplecabbage/phonegap-plugins for more details");
-        }
-
-        window.plugins.childBrowser.showWebPage(url);
-        window.plugins.childBrowser.onLocationChange = function(loc){
-            //Really cool hack
-            var parser = document.createElement('a');
-            parser.href = loc;
-            
+        iab = window.open(url, '_blank', 'location=no,enableViewportScale=yes');
+        iab.addEventListener('loadstop', function (event) {
+            var loc = event.url;
             console.log(loc);
+
             //DOM auto-parses
             if (parser.hostname == "www.filepicker.io" && parser.pathname == FINISHED_PATH) {
                 window.plugins.childBrowser.close();
@@ -249,7 +245,7 @@ var filepicker = (function(){
                 }
                 callback(argsParsed);
             }
-        };
+        });
     };
 
     /********************UTILITIES***********************/
