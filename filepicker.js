@@ -1,4 +1,4 @@
-var filepicker = (function(){
+var filepicker = (function() {
     'use strict';
     
     /*
@@ -13,7 +13,7 @@ var filepicker = (function(){
     /*
      * @String: The hostname for the site.
      */
-    var BASE_URL = "https://www.filepicker.io";
+    var BASE_URL = 'https://www.filepicker.io';
 
     /*
      * @Map{@String}: a constant map to provide easy selection of mimetypes
@@ -40,364 +40,388 @@ var filepicker = (function(){
      * @Map{@String}: an enum of the services we support
      */
     var SERVICES = {
-        BOX: 0,
+        COMPUTER: 1,
         DROPBOX: 2,
         FACEBOOK: 3,
         GITHUB: 4,
         GMAIL: 5,
         IMAGE_SEARCH: 6,
+        URL: 7,
+        WEBCAM: 8,
         GOOGLE_DRIVE: 9,
-        SEND_EMAIL: 10
+        SEND_EMAIL: 10,
+        INSTAGRAM: 11,
+        FLICKR: 12,
+        VIDEO: 13,
+        EVERNOTE: 14,
+        PICASA: 15,
+        WEBDAV: 16,
+        FTP: 17,
+        ALFRESCO: 18,
+        BOX: 19,
+        SKYDRIVE: 20
     };
         
     var FilepickerException = function(text){
         this.text = text;
-        this.toString = function(){return "FilepickerException: "+this.text;};
+        this.toString = function() { return 'FilepickerException: '+this.text; };
     };
 
-	var isArray = function(o) {
-		return Object.prototype.toString.call(o) === '[object Array]';
-	};
+  var isArray = function(o) {
+    return Object.prototype.toString.call(o) === '[object Array]';
+  };
 
-	var DIALOG_TYPES = {
-			OPEN:'/dialog/open/',
-			SAVEAS:'/dialog/save/'
-	};
+  var DIALOG_TYPES = {
+    OPEN: '/dialog/open/',
+    SAVEAS: '/dialog/save/'
+  };
 
     var URL_REGEX = /^(http|https)\:.*\/\//i;
-	
+  
     var endpoints = {};
-    endpoints.tempStorage = BASE_URL + "/api/path/storage/";
+    endpoints.tempStorage = BASE_URL + '/api/path/storage/';
     endpoints.open = BASE_URL + DIALOG_TYPES.OPEN;
     endpoints.saveas = BASE_URL + DIALOG_TYPES.SAVEAS;
 
-    var FINISHED_PATH = "/dialog/phonegap_done/";
+    var FINISHED_PATH = '/dialog/phonegap_done/';
 
     /*
      * Constructs the url for the window
      * Parameters:
-     *  mimetypes: @Array[@String]. Array of mimetypes
      *  options: @Map{@String}. Optional additional specifications.
      *  dialogType: DIALOG_TYPES.OPEN or DIALOG_TYPES.SAVEAS
      * Returns:
      *  @String: the url of the window to be opened
      */
-    var constructOpenURL = function(mimetypes, id, options){
+    var constructOpenURL = function(id, options) {
         return endpoints.open+
-            "?m="+mimetypes.join(",")+
-            "&key="+apiKey+
-            "&id="+id+
-            "&referrer="+window.location.hostname+
-            "&modal=false"+
-            "&redirect_url="+BASE_URL+FINISHED_PATH+
-            (options['services'] ? "&s="+options['services'].join(",") : "")+
-            (options['location'] !== undefined ? "&loc="+options['location'] : "")+
-            (options['metadata'] ? "&meta="+options['metadata']: "")+
-            (options['maxsize'] ? "&maxsize="+options['maxsize']: "")+
-            (options['persist'] ? "&p="+options['persist'] : "")+
-            (options['auth_tokens'] ? "&auth_tokens="+options['auth_tokens'] : "");
+            '?m='+options.mimetypes.join(',')+
+            '&key='+apiKey+
+            '&id='+id+
+            '&referrer='+window.location.hostname+
+            '&modal=false'+
+            '&redirect_url='+BASE_URL+FINISHED_PATH+
+            (options.services ? '&s='+options.services.join(',') : '')+
+            (options.location !== undefined ? '&loc='+options.location : '')+
+            (options.metadata ? '&meta='+options.metadata: '')+
+            (options.maxsize ? '&maxsize='+options.maxsize: '')+
+            (options.persist ? '&p='+options.persist : '')+
+            (options.authTokens ? '&auth_tokens='+options.authTokens : '');
     };
-    var constructSaveAsURL = function(fileurl, mimetype, id, options){
+
+    var constructSaveAsURL = function(fileUrl, id, options) {
         return endpoints.saveas+
-            "?url="+fileurl+
-            "&m="+mimetype+
-            "&key="+apiKey+
-            "&id="+id+
-            "&referrer="+window.location.hostname+
-            "&modal=false"+
-            "&redirect_url="+BASE_URL+FINISHED_PATH+
-            (options['services'] ? "&s="+options['services'] : "")+
-            (options['location'] !== undefined ? "&loc="+options['location'] : "");
+            '?url='+fileUrl+
+            '&m='+options.mimetypes[0]+
+            '&key='+apiKey+
+            '&id='+id+
+            '&referrer='+window.location.hostname+
+            '&modal=false'+
+            '&redirect_url='+BASE_URL+FINISHED_PATH+
+            (options.services ? '&s='+options.services : '')+
+            (options.location !== undefined ? '&loc='+options.location : '');
     };
-	
+  
     /*
      * returns: @String. A random ID number
      */
     var getID = function(){
-        d = new Date();
+        var d = new Date();
         return d.getTime().toString();
     };
     
     /*
      * Opens a file picker dialog where the user can select a file to open/save into the application. 
      * Parameters:
-     *  file_url: @String. SAVEAS ONLY. The file to save
-     *  mimetype: @String||@Array[@String]. Limit selection to only the specified mimetype(s). Required
+     *  fileUrl: @String. SAVEAS ONLY. The file to save
      *  options: @Map{@String}. Optional additional specifications.
      *  callback: @Function(url:@String,token:@String,data:@Map{String}). Callback contianing the access information for the selected file.
      * Returns:
      *  @Window: the window opened
      */
-    var getFile = function(mimetype, options, callback) {
-        return openFilepickerWindow(DIALOG_TYPES.OPEN, {'mimetype': mimetype, 'options': options, 'callback': callback});
+    var getFile = function(options, callback) {
+        return openFilepickerWindow(DIALOG_TYPES.OPEN, {'options': options, 'callback': callback});
     };
     
-    var saveFileAs = function(file_url, mimetype, options, callback) {
-        return openFilepickerWindow(DIALOG_TYPES.SAVEAS, {'file_url':file_url, 'mimetype': mimetype, 'options': options, 'callback': callback});
+    var saveFileAs = function(fileUrl, options, callback) {
+        return openFilepickerWindow(DIALOG_TYPES.SAVEAS, {'fileUrl':fileUrl, 'options': options, 'callback': callback});
     };
     
     var openFilepickerWindow = function(dialogType, args) {
-        //Local variables
+        // Local variables
         var picker;
         var handler;
-        var file_url;
+        var fileUrl;
 
         if (!apiKey) {
-            throw new FilepickerException("API Key not found");
+            throw new FilepickerException('API Key not found');
         }
         
-        if (dialogType != DIALOG_TYPES.OPEN && dialogType != DIALOG_TYPES.SAVEAS){
+        if (dialogType !== DIALOG_TYPES.OPEN && dialogType !== DIALOG_TYPES.SAVEAS){
             return null;
         }
-        if (dialogType == DIALOG_TYPES.SAVEAS){
-            //the one unique argument
-            file_url = args['file_url'];       
-            if (!file_url || typeof file_url != "string") {
-                throw new FilepickerException("The provided File URL ('"+file_url+"') is not valid");
+        if (dialogType === DIALOG_TYPES.SAVEAS){
+            // the one unique argument
+            fileUrl = args.fileUrl;
+            if (!fileUrl || typeof fileUrl !== 'string') {
+                throw new FilepickerException('The provided File URL (\''+fileUrl+'\') is not valid');
             }
-            if (!file_url.match(URL_REGEX)) {
-                throw new FilepickerException(file_url + " is not a valid url. Make sure it starts with http or https");
+            if (!fileUrl.match(URL_REGEX)) {
+                throw new FilepickerException(fileUrl + ' is not a valid url. Make sure it starts with http or https');
             }
         }
 
-        var mimetype = args['mimetype'];
-        var options = args['options'];
-        var callback = args['callback']; 
+        var options = args.options;
+        var callback = args.callback;
 
-        if (options['location'] === undefined) {
-            //Default to dropbox, not computer
-            options['location'] = "/Dropbox/";
-        }
-        		
-        //setting up parameters
-        mimetype = mimetype || MIMETYPES.ALL;
-        if (!isArray(mimetype)) {
-            mimetype = [mimetype];
-        }
-
-        if (options['services'] && !isArray(options['services'])) {
-            options['services'] = [options['services']];
+        // if (typeof options.location === 'undefined') {
+        //     // Default to dropbox, not computer
+        //     options.location = '/Dropbox/';
+        // }
+        
+        // setting up parameters
+        options.mimetypes = options.mimetypes || MIMETYPES.ALL;
+        if (!Array.isArray(options.mimetype)) {
+            options.mimetypes = [options.mimetypes];
         }
 
-        if (typeof options === "function") {
+        if (options.services && !Array.isArray(options.services)) {
+            options.services = [options.services];
+        }
+
+        if (typeof options === 'function') {
             callback = options;
             options = {};
         }
-        callback = callback || function(){};
+        callback = callback || function() {};
 
-        //Debug mode - fire callback immediately
-        if (options['debug']) {
-            //we still want to mock asynchronous
-            dummy_url = "https://www.filepicker.io/api/file/-nBq2onTSemLBxlcBWn1";
+        // Debug mode - fire callback immediately
+        if (options.debug) {
+            // we still want to mock asynchronous
+            dummyUrl = 'https://www.filepicker.io/api/file/-nBq2onTSemLBxlcBWn1';
             data = {'filename':'test.png','type':'image/png','size':58979};
             window.setTimeout(function(){
-                callback(dummy_url, data);
+                callback(dummyUrl, data);
             }, 100);
             return window;
         }
         
-        if (options['auth_tokens'] !== undefined) {
-            var auth_tokens = JSON.stringify(options['auth_tokens']);
-            options['auth_tokens'] = encodeURIComponent(auth_tokens);
+        if (typeof options.authTokens !== 'undefined') {
+            var authTokens = JSON.stringify(options.authTokens);
+            options.authTokens = encodeURIComponent(authTokens);
         }
 
         var id = getID();
         var url;
         
-        if (dialogType == DIALOG_TYPES.OPEN){
-            url = constructOpenURL(mimetype, id, options);
-        } else if (dialogType == DIALOG_TYPES.SAVEAS){
-            url = constructSaveAsURL(file_url, mimetype, id, options);
+        if (dialogType === DIALOG_TYPES.OPEN){
+            url = constructOpenURL(id, options);
+        } else if (dialogType === DIALOG_TYPES.SAVEAS){
+            url = constructSaveAsURL(fileUrl, id, options);
         }
 
-        var pg_callback = function(argsParsed){
-            var fpurl = argsParsed['fpurl'];
-            callback(fpurl, {});
+        var phonegapCallback = function(argsParsed, metadata){
+            callback(argsParsed.fpurl, metadata);
         };
 
-        picker = createPhoneGapPane(url, pg_callback);
+        picker = createPhoneGapPane(url, phonegapCallback);
 
-		return picker;
+        return picker;
     };
 
     var createPhoneGapPane = function(url, callback) {
-        iab = window.open(url, '_blank', 'location=no,enableViewportScale=yes');
+        var iab = window.open(url, '_blank', 'location=no,enableViewportScale=yes,toolbar=no');
         iab.addEventListener('loadstop', function (event) {
             var loc = event.url;
-            console.log(loc);
 
-            //DOM auto-parses
-            if (parser.hostname == "www.filepicker.io" && parser.pathname == FINISHED_PATH) {
-                window.plugins.childBrowser.close();
+            // Really cool hack
+            // http://stackoverflow.com/questions/6944744/javascript-get-portion-of-url-path
+            var parser = document.createElement('a');
+            parser.href = loc;
+
+            // DOM auto-parses
+            if (parser.hostname === 'www.filepicker.io' && parser.pathname === FINISHED_PATH) {
+                iab.close();
                 var args = parser.search.substring(1).split('&');
-                argsParsed = {};
+                var argsParsed = {};
 
-                //Kindly provided by 'http://stackoverflow.com/questions/2090551/parse-query-string-in-javascript'
-                for (i=0; i < args.length; i++) {
-                    arg = unescape(args[i]);
+                // Kindly provided by 'http://stackoverflow.com/questions/2090551/parse-query-string-in-javascript'
+                for (var i=0; i < args.length; i++) {
+                    var arg = unescape(args[i]);
 
-                    if (arg.indexOf('=') == -1) {
+                    if (arg.indexOf('=') === -1) {
                         argsParsed[arg.trim()] = true;
                     } else {
-                        kvp = arg.split('=');
+                        var kvp = arg.split('=');
                         argsParsed[kvp[0].trim()] = kvp[1].trim();
                     }
                 }
-                callback(argsParsed);
+
+                // Get metadata
+                var metadata = {};
+                var xhr = new XMLHttpRequest();
+                xhr.responseType = 'json';
+                xhr.open('GET', argsParsed.fpurl + '/metadata', true);
+                xhr.onloadend = function(event) {
+                    metadata = JSON.parse(event.target.response);
+                    callback(argsParsed, metadata);
+                };
+                xhr.send();
             }
         });
     };
 
     /********************UTILITIES***********************/
+
   /**
   *
   *  Base64 encode / decode
   *  http://www.webtoolkit.info/
   *
-  **/    
+  **/
 
   var Base64 = {
 
-  	// private property
-  	_keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+    // private property
+    _keyStr : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
 
-  	// public method for encoding
-  	encode : function (input) {
-  		var output = "";
-  		var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
-  		var i = 0;
+    // public method for encoding
+    encode : function (input) {
+      var output = '';
+      var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+      var i = 0;
 
-  		input = Base64._utf8_encode(input);
+      input = Base64._utf8_encode(input);
 
-  		while (i < input.length) {
+      while (i < input.length) {
 
-  			chr1 = input.charCodeAt(i);
-  			chr2 = input.charCodeAt(i+1);
-  			chr3 = input.charCodeAt(i+2);
+        chr1 = input.charCodeAt(i);
+        chr2 = input.charCodeAt(i+1);
+        chr3 = input.charCodeAt(i+2);
             i += 3;
 
-  			enc1 = chr1 >> 2;
-  			enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-  			enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-  			enc4 = chr3 & 63;
+        enc1 = chr1 >> 2;
+        enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+        enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+        enc4 = chr3 & 63;
 
-  			if (isNaN(chr2)) {
-  				enc3 = enc4 = 64;
-  			} else if (isNaN(chr3)) {
-  				enc4 = 64;
-  			}
+        if (isNaN(chr2)) {
+          enc3 = enc4 = 64;
+        } else if (isNaN(chr3)) {
+          enc4 = 64;
+        }
 
-  			output = output +
-  			this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) +
-  			this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
+        output = output +
+        this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) +
+        this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
 
-  		}
+      }
 
-  		return output;
-  	},
+      return output;
+    },
 
-  	// public method for decoding
-  	decode : function (input) {
-  		var output = "";
-  		var chr1, chr2, chr3;
-  		var enc1, enc2, enc3, enc4;
-  		var i = 0;
+    // public method for decoding
+    decode : function (input) {
+      var output = '';
+      var chr1, chr2, chr3;
+      var enc1, enc2, enc3, enc4;
+      var i = 0;
 
-  		input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+      input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
 
-  		while (i < input.length) {
+      while (i < input.length) {
 
-  			enc1 = this._keyStr.indexOf(input.charAt(i));
-  			enc2 = this._keyStr.indexOf(input.charAt(i+1));
-  			enc3 = this._keyStr.indexOf(input.charAt(i+2));
-  			enc4 = this._keyStr.indexOf(input.charAt(i+3));
+        enc1 = this._keyStr.indexOf(input.charAt(i));
+        enc2 = this._keyStr.indexOf(input.charAt(i+1));
+        enc3 = this._keyStr.indexOf(input.charAt(i+2));
+        enc4 = this._keyStr.indexOf(input.charAt(i+3));
             i+=4;
 
-  			chr1 = (enc1 << 2) | (enc2 >> 4);
-  			chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-  			chr3 = ((enc3 & 3) << 6) | enc4;
+        chr1 = (enc1 << 2) | (enc2 >> 4);
+        chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+        chr3 = ((enc3 & 3) << 6) | enc4;
 
-  			output = output + String.fromCharCode(chr1);
+        output = output + String.fromCharCode(chr1);
 
-  			if (enc3 != 64) {
-  				output = output + String.fromCharCode(chr2);
-  			}
-  			if (enc4 != 64) {
-  				output = output + String.fromCharCode(chr3);
-  			}
+        if (enc3 != 64) {
+          output = output + String.fromCharCode(chr2);
+        }
+        if (enc4 != 64) {
+          output = output + String.fromCharCode(chr3);
+        }
 
-  		}
+      }
 
-  		output = Base64._utf8_decode(output);
+      output = Base64._utf8_decode(output);
 
-  		return output;
+      return output;
 
-  	},
+    },
 
-  	// private method for UTF-8 encoding
-  	_utf8_encode : function (string) {
-  		string = string.replace(/\r\n/g,"\n");
-  		var utftext = "";
+    // private method for UTF-8 encoding
+    _utf8_encode : function (string) {
+      string = string.replace(/\r\n/g,'\n');
+      var utftext = '';
 
-  		for (var n = 0; n < string.length; n++) {
+      for (var n = 0; n < string.length; n++) {
 
-  			var c = string.charCodeAt(n);
+        var c = string.charCodeAt(n);
 
-  			if (c < 128) {
-  				utftext += String.fromCharCode(c);
-  			}
-  			else if((c > 127) && (c < 2048)) {
-  				utftext += String.fromCharCode((c >> 6) | 192);
-  				utftext += String.fromCharCode((c & 63) | 128);
-  			}
-  			else {
-  				utftext += String.fromCharCode((c >> 12) | 224);
-  				utftext += String.fromCharCode(((c >> 6) & 63) | 128);
-  				utftext += String.fromCharCode((c & 63) | 128);
-  			}
+        if (c < 128) {
+          utftext += String.fromCharCode(c);
+        }
+        else if((c > 127) && (c < 2048)) {
+          utftext += String.fromCharCode((c >> 6) | 192);
+          utftext += String.fromCharCode((c & 63) | 128);
+        }
+        else {
+          utftext += String.fromCharCode((c >> 12) | 224);
+          utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+          utftext += String.fromCharCode((c & 63) | 128);
+        }
 
-  		}
+      }
 
-  		return utftext;
-  	},
+      return utftext;
+    },
 
-  	// private method for UTF-8 decoding
-  	_utf8_decode : function (utftext) {
-  		var string = "";
-  		var i = 0;
-  		var c = c1 = c2 = 0;
+    // private method for UTF-8 decoding
+    _utf8_decode : function (utftext) {
+      var string = '';
+      var i = 0;
+      var c = c1 = c2 = 0;
 
-  		while ( i < utftext.length ) {
+      while ( i < utftext.length ) {
 
-  			c = utftext.charCodeAt(i);
+        c = utftext.charCodeAt(i);
 
-  			if (c < 128) {
-  				string += String.fromCharCode(c);
-  				i++;
-  			}
-  			else if((c > 191) && (c < 224)) {
-  				c2 = utftext.charCodeAt(i+1);
-  				string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
-  				i += 2;
-  			}
-  			else {
-  				c2 = utftext.charCodeAt(i+1);
-  				c3 = utftext.charCodeAt(i+2);
-  				string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
-  				i += 3;
-  			}
+        if (c < 128) {
+          string += String.fromCharCode(c);
+          i++;
+        }
+        else if((c > 191) && (c < 224)) {
+          c2 = utftext.charCodeAt(i+1);
+          string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+          i += 2;
+        }
+        else {
+          c2 = utftext.charCodeAt(i+1);
+          c3 = utftext.charCodeAt(i+2);
+          string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+          i += 3;
+        }
 
-  		}
+      }
 
-  		return string;
-  	}
+      return string;
+    }
 
   };
   
     var getUrlFromData = function(fileContents, filename, callback) {
-        if (typeof filename === "function") {
+        if (typeof filename === 'function') {
             callback = filename;
-            filename = "";
+            filename = '';
         }
 
         callback = callback || function(){};
@@ -405,8 +429,8 @@ var filepicker = (function(){
         if (!fileContents) {
             throw 'Error: no contents given';
         }
-    	var returnData;
-    	var base64contents = Base64.encode(fileContents);
+      var returnData;
+      var base64contents = Base64.encode(fileContents);
         var request = utilities.ajax({
            method: 'POST',
            url: endpoints.tempStorage+filename,
@@ -414,7 +438,7 @@ var filepicker = (function(){
            json: true,
            success: function(returnJson){
                returnData = returnJson;
-               if (returnData.result == "ok") {
+               if (returnData.result == 'ok') {
                   callback(returnData.url, returnData.data);
                } else {
                   callback(null, returnData);
@@ -429,12 +453,12 @@ var filepicker = (function(){
     /*
      * Gets the raw data for a file link.
      * Parameters:
-     *  file_url: @String. The file for which to fetch the data
+     *  fileUrl: @String. The file for which to fetch the data
      *  base64encode: @boolean. Optional. Whether the contents should be returned base64 encoded
      *  callback: @Function(data:@String). Callback function
      */
-    var getContents = function(file_url, base64encode, callback) {
-        if (typeof base64encode === "function") {
+    var getContents = function(fileUrl, base64encode, callback) {
+        if (typeof base64encode === 'function') {
             callback = base64encode;
             base64encode = false;
         }
@@ -443,7 +467,7 @@ var filepicker = (function(){
 
         utilities.ajax({
             method: 'GET',
-            url: file_url,
+            url: fileUrl,
             data: {'base64encode':base64encode},
             success: function(responseText){
                 callback(responseText);
@@ -454,25 +478,25 @@ var filepicker = (function(){
     /*
      * Removes a file link (and the file itself if it's stored on S3) for the given file
      * Parameters:
-     *  file_url: @String. The file to revoke
+     *  fileUrl: @String. The file to revoke
      *  callback: @Function(success:@Boolean, message:@String). Callback function
      */
-    var revokeFile = function(file_url, callback) {
+    var revokeFile = function(fileUrl, callback) {
         if (!apiKey) {
-            throw new FilepickerException("API Key not found");
+            throw new FilepickerException('API Key not found');
         }
 
-        file_url += '/revoke';
+        fileUrl += '/revoke';
         var request = utilities.ajax({
             method: 'POST',
-            url: file_url,
+            url: fileUrl,
             success: function(responseText) {
-               callback(true, "success");
+               callback(true, 'success');
             },
             error: function(responseText) {
                callback(false, responseText);
             },
-            data: {"key": apiKey}
+            data: {'key': apiKey}
         });
     };
 
@@ -487,11 +511,11 @@ var filepicker = (function(){
                 func();
             });
         } else {
-            var evnt = "load";
+            var evnt = 'load';
             if (window.addEventListener)  // W3C DOM
                 window.addEventListener(evnt,func,false);
             else if (window.attachEvent) { // IE DOM
-                window.attachEvent("on"+evnt, func);
+                window.attachEvent('on'+evnt, func);
             } else {
                 if (window.onload) {
                     var curr = window.onload;
@@ -606,7 +630,7 @@ var filepicker = (function(){
         var ajax = function(options){
             //setting defaults
             var url = options.url || null;
-            var method = options.method ? options.method.toUpperCase() : "POST";
+            var method = options.method ? options.method.toUpperCase() : 'POST';
             var success = options.success || function(){};
             var error = options.error || function(){};
             var async = options.async === undefined ? true : options.async;
@@ -654,7 +678,7 @@ var filepicker = (function(){
                 xhr.setRequestHeader('Accept', 'text/javascript, text/html, application/xml, text/xml, */*');
             }
 
-            if (data && processData && (method == "POST" || method == "PUT")) {
+            if (data && processData && (method == 'POST' || method == 'PUT')) {
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=utf-8');
             }
 
@@ -669,13 +693,13 @@ var filepicker = (function(){
     utilities.matchesMimetype = function(test, against) {
         if (!test) {return false;}
 
-        test_parts = test.split("/");
-        against_parts = against.split("/");
+        test_parts = test.split('/');
+        against_parts = against.split('/');
         //comparing types
-        if (against_parts[0] == "*") {return true;}
+        if (against_parts[0] == '*') {return true;}
         if (against_parts[0] != test_parts[0]) {return false;}
         //comparing subtypes
-        if (against_parts[1] == "*") {return true;}
+        if (against_parts[1] == '*') {return true;}
         return against_parts[1] == test_parts[1];
     };
 
@@ -684,36 +708,36 @@ var filepicker = (function(){
         var i; var j; var base; var ow; var holder; var mtypes; var fpoptions; var apikey; var services;
         for (i = 0; i < open_base.length; i++) {
             base = open_base[i];
-            ow = document.createElement("button");
-            ow.innerHTML = base.getAttribute('data-fp-text') || "Pick File";
+            ow = document.createElement('button');
+            ow.innerHTML = base.getAttribute('data-fp-text') || 'Pick File';
             ow.className = base.getAttribute('data-fp-class') || base.className;
 
-            base.setAttribute('type', "hidden");
+            base.setAttribute('type', 'hidden');
 
-            mtypes = (base.getAttribute("data-fp-mimetypes") || MIMETYPES.ALL).split(",");
+            mtypes = (base.getAttribute('data-fp-mimetypes') || MIMETYPES.ALL).split(',');
             fpoptions = {};
-            fpoptions['persist'] = (base.getAttribute("data-fp-option-persist") || "false") != "false";
+            fpoptions['persist'] = (base.getAttribute('data-fp-option-persist') || 'false') != 'false';
 
-            services = base.getAttribute("data-fp-option-services");
+            services = base.getAttribute('data-fp-option-services');
             if (services) {
-                services = services.split(",");
+                services = services.split(',');
                 for (j=0; j<services.length; j++) {
-                    services[j] = SERVICES[services[j].replace(" ","")];
+                    services[j] = SERVICES[services[j].replace(' ','')];
                 }
                 fpoptions['services'] = services;
             }
             
-            apikey = base.getAttribute("data-fp-apikey");
+            apikey = base.getAttribute('data-fp-apikey');
             if (apikey) {
                 setAPIKey(apikey);
             }
 
-            ow.onclick = (function(input, mimetypes, options){
+            ow.onclick = (function(input, options){
                 return function(){
-                    getFile(mimetypes, options, function(data, metadata){
+                    getFile(options, function(data, metadata){
                         input.value = data;
                         var e = createOnChangeEvent(input, [{url:data, data:metadata}]);
-                        console.log("change");
+                        console.log('change');
                         console.log(data);
                         input.dispatchEvent(e);
                     });
@@ -730,36 +754,36 @@ var filepicker = (function(){
     var constructSaveWidgets = function() {
         var save_base = [];
         var tmp = document.querySelectorAll('button[data-fp-url]');
-        for (i=0; i< tmp.length; i++) {save_base.push(tmp[i]);}
+        for (var i=0; i< tmp.length; i++) {save_base.push(tmp[i]);}
         tmp = document.querySelectorAll('a[data-fp-url]');
-        for (i=0; i< tmp.length; i++) {save_base.push(tmp[i]);}
+        for (var i=0; i< tmp.length; i++) {save_base.push(tmp[i]);}
         tmp = document.querySelectorAll('input[type="button"][data-fp-url]');
-        for (i=0; i< tmp.length; i++) {save_base.push(tmp[i]);}
+        for (var i=0; i< tmp.length; i++) {save_base.push(tmp[i]);}
 
-        for (i = 0; i < save_base.length; i++) {
+        for (var i = 0; i < save_base.length; i++) {
             base = save_base[i];
 
             //Most likely they will want to set things like data-fp-url on the fly, so
             //we get the properties dynamically
             base.onclick = (function(base) {
                 return function() {
-                    var mimetype = base.getAttribute("data-fp-mimetype");
-                    var url = base.getAttribute("data-fp-url");
+                    var mimetype = base.getAttribute('data-fp-mimetype');
+                    var url = base.getAttribute('data-fp-url');
                     if (!mimetype || !url) {
                         return true;
                     }
 
                     var options = {};
-                    var services = base.getAttribute("data-fp-option-services");
+                    var services = base.getAttribute('data-fp-option-services');
                     if (services) {
-                        services = services.split(",");
+                        services = services.split(',');
                         for (j=0; j<services.length; j++) {
-                            services[j] = SERVICES[services[j].replace(" ","")];
+                            services[j] = SERVICES[services[j].replace(' ','')];
                         }
                         options['services'] = services;
                     }
                     
-                    apikey = base.getAttribute("data-fp-apikey");
+                    apikey = base.getAttribute('data-fp-apikey');
                     if (apikey) {
                         setAPIKey(apikey);
                     }
@@ -772,7 +796,7 @@ var filepicker = (function(){
 
     var createOnChangeEvent = function(input, files){
         var e = document.createEvent('Event');
-        e.initEvent("change", true, false);
+        e.initEvent('change', true, false);
         e.eventPhase = 2;
         e.currentTarget = e.srcElement = e.target = input;
         e.files = files;
@@ -794,7 +818,7 @@ var filepicker = (function(){
         MIMETYPES: MIMETYPES,
         SERVICES: SERVICES,
         setKey: setAPIKey,
-    	getUrlFromData: getUrlFromData,
+      getUrlFromData: getUrlFromData,
         revokeFile: revokeFile,
         getContents: getContents
     };

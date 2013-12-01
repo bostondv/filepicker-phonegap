@@ -1,0 +1,18 @@
+{
+  "name": "filepicker-phonegap",
+  "version": "0.1.0",
+  "homepage": "https://github.com/bostondv/filepicker-phonegap",
+  "authors": [
+    "Boston Dell-Vandenberg <boston@pomelodesign.com>",
+    "Ink File Picker <support@filepicker.io>"
+  ],
+  "description": "JavaScript library for running Ink File Picker with PhoneGap 3.0+",
+  "main": "filepicker.js",
+  "keywords": [
+    "ink file picker",
+    "filepicker.io",
+    "phonegap",
+    "cordova"
+  ],
+  "license": "MIT"
+}
